@@ -8,15 +8,26 @@
     dbp = new Promise((resolve, reject) => {
       const req = indexedDB.open(DB, 1);
       req.onupgradeneeded = () => req.result.createObjectStore(STORE);
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
+      req.onsuccess = () => {
+        const db = req.result;
+        db.onclose = db.onversionchange = () => { dbp = null; db.close(); };
+        resolve(db);
+      };
+      req.onerror = () => { dbp = null; reject(req.error); };
     });
     return dbp;
   }
   function tx(mode, fn) {
     return open().then((db) => new Promise((resolve, reject) => {
-      const t = db.transaction(STORE, mode);
-      const req = fn(t.objectStore(STORE));
+      let t, req;
+      try {
+        t = db.transaction(STORE, mode);
+        req = fn(t.objectStore(STORE));
+      } catch (e) {
+        dbp = null;
+        reject(e);
+        return;
+      }
       t.oncomplete = () => resolve(req && req.result);
       t.onerror = () => reject(t.error);
       t.onabort = () => reject(t.error);

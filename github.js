@@ -10,7 +10,7 @@
     for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
     return btoa(bin);
   }
-  const enc = (path) => path.split("/").map(encodeURIComponent).join("/");
+  const enc = (path) => path.replace(/^\/+|\/+$/g, "").split("/").map(encodeURIComponent).join("/");
   const MIME = { svg: "image/svg+xml", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp" };
 
   class GitHub {
@@ -20,7 +20,7 @@
     }
     url(path) { return `https://api.github.com/repos/${this.repo}/contents/${enc(path)}`; }
     async req(path, { accept, method, body } = {}) {
-      const res = await fetch(this.url(path) + (method ? "" : `?ref=${this.branch}`), {
+      const res = await fetch(this.url(path) + (method ? "" : `?ref=${encodeURIComponent(this.branch)}`), {
         method: method || "GET",
         headers: {
           Authorization: `Bearer ${this.token}`,
@@ -41,7 +41,9 @@
     // 目录列表：[{name, path, sha, type}]；不存在返回 []
     async dir(path) {
       try {
-        return (await (await this.req(path)).json()).map((f) => ({ name: f.name, path: f.path, sha: f.sha, type: f.type }));
+        const list = await (await this.req(path)).json();
+        if (!Array.isArray(list)) throw new GitHubError(0, "不是目录");
+        return list.map((f) => ({ name: f.name, path: f.path, sha: f.sha, type: f.type }));
       } catch (e) {
         if (e.status === 404) return [];
         throw e;
