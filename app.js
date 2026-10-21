@@ -129,6 +129,7 @@
   async function sync({ quiet, pull } = {}) {
     if (st.busy || !st.gh) return;
     if (!st.online) { setSyncUi(); return; }
+    const hadData = !!st.data;
     st.busy = true; st.error = null; setSyncUi();
     let refreshed = false;
     try {
@@ -142,14 +143,16 @@
         st.error = e.message;
       } else if (e.status === 401 || e.status === 403) {
         st.error = "token 无效或没有权限，请到设置页检查";
-        if (!quiet) location.hash = "#settings";
+        if (!quiet || (location.hash || "#today").slice(1) !== "quiz") location.hash = "#settings";
+      } else if (e instanceof TypeError) {
+        st.error = "网络错误，稍后再试";
       } else {
         st.error = `同步失败：${e.message || e}`;
       }
     } finally {
       st.busy = false; setSyncUi();
       const tab = (location.hash || "#today").slice(1);
-      if ((refreshed || st.error) && tab !== "quiz" && tab !== "settings") render();
+      if ((!hadData && st.data) || ((refreshed || st.error) && tab !== "quiz" && tab !== "settings" && tab !== "practice")) render();
       if (!st.error && st.pending.length) scheduleUpload();
     }
   }
@@ -358,12 +361,14 @@
     window.scrollTo(0, 0);
   }
 
+  let settingsNote = null;
   function viewSettings() {
     const cfg = st.cfg || { token: "", name: "Ellie", email: "" };
     const token = h("input", { type: "password", value: cfg.token || "", placeholder: "github_pat_…", autocomplete: "off" });
     const name = h("input", { type: "text", value: cfg.name || "", placeholder: "提交署名" });
     const email = h("input", { type: "email", value: cfg.email || "", placeholder: "署名邮箱（可留空）" });
-    const msg = h("div", { class: "msg", style: "display:none" });
+    const msg = h("div", { class: "msg" + (settingsNote && settingsNote.err ? " err" : ""), style: settingsNote ? null : "display:none" }, settingsNote ? settingsNote.text : null);
+    settingsNote = null;
     const say = (t, err) => { msg.style.display = ""; msg.textContent = t; msg.classList.toggle("err", !!err); };
     show(errorBox(),
       h("div", { class: "card" }, h("h2", null, "GitHub"),
@@ -374,7 +379,8 @@
           saveCfg({ token: token.value.trim(), name: name.value.trim() || "Ellie", email: email.value.trim() });
           say("已保存，正在同步…");
           await sync();
-          say(st.error || "同步完成");
+          settingsNote = { text: st.error || "同步完成", err: !!st.error };
+          render();
         } }, "保存并同步"), msg),
       h("div", { class: "card" }, h("h2", null, "数据"),
         h("p", { class: "muted" }, `题目 ${st.data ? st.data.questions.length + " 道，生成于 " + st.data.generated_at : "未下载"}`),
