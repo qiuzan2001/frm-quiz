@@ -120,3 +120,37 @@ test("queueFor returns undone first, or all when everything is done", () => {
   assert.deepEqual(L.queueFor([P(1), P(2)], progress, true), [P(1), P(2)]);
   assert.deepEqual(L.queueFor([P(1)], progress, false), [P(1)]);
 });
+
+test("unitTree LO prefix handles zero-padded reading ids", () => {
+  const data = {
+    units: [{ id: "U01", name: "基础", phase: "P1", phase_name: "基础" }],
+    readings: { R01: { title: "第一章", unit: "U01" } },
+    questions: [
+      { path: P(1), id: "Q0001", kind: "bank", unit: "U01", readings: ["R01"], los: ["1.a"], mock: false, source: "分类题库", category: null, module: null },
+    ],
+  };
+  const r01 = L.unitTree(data, {})[0].units[0].readings[0];
+  assert.deepEqual(r01.los, [{ lo: "1.a", paths: [P(1)], counts: { total: 1, done: 0, wrong: 0 } }]);
+});
+
+test("applyRecords breaks at-ties by id and skips malformed records", () => {
+  const first = [{ id: "b", q: P(1), choice: "B", correct: false, at: "2026-10-20T08:00:00+08:00" }];
+  const second = [
+    { id: "a", q: P(1), choice: "A", correct: true, at: "2026-10-20T08:00:00+08:00" },
+    { id: "c", choice: "A", correct: true, at: "2026-10-20T08:00:00+08:00" },
+    { id: "d", q: P(2), choice: "A", correct: true },
+  ];
+  const s = L.applyRecords({}, first, second);
+  assert.equal(s[P(1)].status, "错题");
+  assert.equal(s[P(1)].attempts, 2);
+  assert.deepEqual(Object.keys(s), [P(1)]);
+});
+
+test("wrongList sorts null last_done last", () => {
+  const progress = {
+    [P(1)]: { status: "错题", attempts: 1, wrong_count: 1, last_done: null },
+    [P(2)]: { status: "错题", attempts: 1, wrong_count: 1, last_done: "2026-10-01" },
+    [P(3)]: { status: "错题", attempts: 1, wrong_count: 1, last_done: "2026-10-05" },
+  };
+  assert.deepEqual(L.wrongList(DATA, progress, true).map((q) => q.id), ["Q0003", "Q0002", "Q0001"]);
+});

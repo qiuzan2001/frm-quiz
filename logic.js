@@ -44,7 +44,9 @@
     for (const [k, v] of Object.entries(progress || {})) {
       out[k] = { status: normalizeStatus(v.status), attempts: toCount(v.attempts), wrong_count: toCount(v.wrong_count), last_done: v.last_done || null };
     }
-    const recs = [].concat(...lists.map((l) => l || [])).sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
+    const recs = [].concat(...lists.map((l) => l || []))
+      .filter((r) => r && typeof r.q === "string" && typeof r.at === "string")
+      .sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
     for (const r of recs) out[r.q] = grade(out[r.q], r.correct === true, String(r.at).slice(0, 10));
     return out;
   }
@@ -87,7 +89,8 @@
       const readingIds = Object.keys(data.readings).filter((r) => data.readings[r].unit === u.id).sort();
       const readings = readingIds.map((rid) => {
         const rq = uq.filter((q) => q.readings.includes(rid));
-        const loIds = Array.from(new Set(rq.flatMap((q) => q.los.filter((lo) => lo.startsWith(rid.slice(1) + "."))))).sort();
+        const loPrefix = String(Number(rid.slice(1))) + ".";
+        const loIds = Array.from(new Set(rq.flatMap((q) => q.los.filter((lo) => lo.startsWith(loPrefix))))).sort();
         const los = loIds.map((lo) => {
           const lq = rq.filter((q) => q.los.includes(lo));
           return { lo, paths: byId(lq), counts: counts(byId(lq), progress) };
@@ -161,7 +164,7 @@
     return data.questions
       .map((q) => ({ q, s: stateOf(progress, q.path) }))
       .filter(({ s }) => (currentOnly ? s.status === "错题" : s.wrong_count > 0))
-      .sort((a, b) => b.s.wrong_count - a.s.wrong_count || String(b.s.last_done).localeCompare(String(a.s.last_done)))
+      .sort((a, b) => b.s.wrong_count - a.s.wrong_count || (b.s.last_done || "").localeCompare(a.s.last_done || ""))
       .map(({ q }) => q);
   }
 
