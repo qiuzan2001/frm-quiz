@@ -2,7 +2,7 @@
 const CACHE = "frm-quiz-v1";
 const SHELL = [
   "./", "./index.html", "./style.css", "./logic.js", "./store.js", "./github.js", "./app.js",
-  "./manifest.webmanifest", "./icon.svg",
+  "./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png",
   "https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js",
   "https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js",
   "https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css",
