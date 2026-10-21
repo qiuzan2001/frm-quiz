@@ -393,7 +393,7 @@
             if (st.pending.length && !confirm(`还有 ${st.pending.length} 条作答没上传，确定清除？`)) return;
             await S.clear(); await caches.delete("frm-images"); localStorage.removeItem(CFG_KEY); location.reload();
           } }, "清除本机数据"))),
-      h("div", { class: "card muted" }, "frm-quiz v1 · 作答先存在手机，再上传到仓库 _sync/phone/，Obsidian 打开题库首页或学习计划页时合并。"));
+      h("div", { class: "card muted" }, "frm-quiz v1 · 作答先存在手机，再上传到仓库 _sync/phone/，GitHub Actions 自动合并进题目并更新进度。"));
   }
 
   function render() {

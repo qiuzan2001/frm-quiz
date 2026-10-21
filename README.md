@@ -7,7 +7,7 @@ FRM-Vault 题库的 iPhone 刷题页面。纯静态，题目与进度都从私�
 1. iPhone Safari 打开 https://qiuzan2001.github.io/frm-quiz/ ，分享 → 「添加到主屏幕」。
 2. 打开后到 ⚙︎ 设置页填 token，保存并同步。
 3. 今日 / 刷题 / 错题三个 Tab。作答先存在手机，30 秒后或切到后台时上传到 `题库/FRM1/_sync/phone/`。
-4. Obsidian 打开「题库首页」或「学习计划」时合并进题目（只在一台电脑勾「在这台电脑自动合并」）。
+4. 上传后 GitHub Actions 自动合并进题目并更新进度，几分钟后再点一次同步就能看到；Obsidian 里作答的进度同样会到手机。
 
 ## Token
 
