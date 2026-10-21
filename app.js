@@ -312,7 +312,11 @@
       verdict.className = "verdict " + (correct ? "right" : "wrong");
       verdict.textContent = correct ? "✓ 正确" : "✗ 错误" + (q.answer ? `，正确答案 ${q.answer}` : "");
       next.style.display = "";
-      answer(path, choice, correct).catch((e) => { st.error = "本机保存失败：" + (e.message || e); setSyncUi(); });
+      answer(path, choice, correct).catch((e) => {
+        st.error = "本机保存失败：" + (e.message || e);
+        verdict.textContent += "（本机保存失败：" + (e.message || e) + "）";
+        setSyncUi();
+      });
     };
     const onPick = (label) => {
       if (revealed) return;
@@ -377,8 +381,8 @@
         h("p", { class: "muted" }, `进度快照 ${st.progressFile ? st.progressFile.exported_at : "无"} · 未合并记录 ${Object.values(st.remote).flat().length} 条 · 待上传 ${st.pending.length} 条`),
         h("p", { class: "muted" }, `最近同步 ${st.lastSync || "无"}`),
         h("div", { class: "node-actions" },
-          h("button", { class: "btn small", onclick: () => sync() }, "立即同步"),
-          h("button", { class: "btn small ghost", onclick: async () => { st.shas = {}; await S.set("shas", {}); await sync(); } }, "重新下载题目"),
+          h("button", { class: "btn small", onclick: async () => { await sync(); render(); } }, "立即同步"),
+          h("button", { class: "btn small ghost", onclick: async () => { st.shas = {}; await S.set("shas", {}); await sync(); render(); } }, "重新下载题目"),
           h("button", { class: "btn small ghost", onclick: async () => {
             if (st.pending.length && !confirm(`还有 ${st.pending.length} 条作答没上传，确定清除？`)) return;
             await S.clear(); await caches.delete("frm-images"); localStorage.removeItem(CFG_KEY); location.reload();
