@@ -126,13 +126,14 @@
     uploadTimer = setTimeout(() => sync({ quiet: true }), UPLOAD_DELAY);
   }
 
-  async function sync({ quiet } = {}) {
+  async function sync({ quiet, pull } = {}) {
     if (st.busy || !st.gh) return;
     if (!st.online) { setSyncUi(); return; }
     st.busy = true; st.error = null; setSyncUi();
+    let refreshed = false;
     try {
       await upload();
-      if (!quiet || !st.data) await refresh();
+      if (pull || !quiet || !st.data) { await refresh(); refreshed = true; }
       recompute();
     } catch (e) {
       if (e.status === 403 && /rate limit/i.test(e.message || "")) {
@@ -141,19 +142,26 @@
         st.error = e.message;
       } else if (e.status === 401 || e.status === 403) {
         st.error = "token 无效或没有权限，请到设置页检查";
-        location.hash = "#settings";
+        if (!quiet) location.hash = "#settings";
       } else {
         st.error = `同步失败：${e.message || e}`;
       }
     } finally {
-      st.busy = false; setSyncUi(); render();
+      st.busy = false; setSyncUi();
+      const tab = (location.hash || "#today").slice(1);
+      if ((refreshed || st.error) && tab !== "quiz" && tab !== "settings") render();
+      if (!st.error && st.pending.length) scheduleUpload();
     }
   }
 
   // ---------- 渲染 ----------
+  const MATH_RE = /\\\$|\$\$[\s\S]+?\$\$|\$(?:\\.|[^$\\\n])+?\$/g;
+  const MATH_PH = /\uE000(\d+)\uE001/g;
   function md(text) {
+    const keep = [];
+    const prepared = (text || "").replace(MATH_RE, (m) => (m === "\\$" ? "\uE002" : (keep.push(m), `\uE000${keep.length - 1}\uE001`)));
     const tpl = document.createElement("template");
-    tpl.innerHTML = marked.parse(text || "", { breaks: true });
+    tpl.innerHTML = marked.parse(prepared, { breaks: true });
     const imgs = [];
     for (const img of tpl.content.querySelectorAll("img")) {
       const src = img.getAttribute("src") || "";
@@ -165,9 +173,17 @@
     }
     const el = h("div");
     el.append(tpl.content);
+    const eachText = (fn) => {
+      const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      const nodes = [];
+      while (w.nextNode()) nodes.push(w.currentNode);
+      for (const n of nodes) fn(n);
+    };
+    eachText((n) => { n.nodeValue = n.nodeValue.replace(MATH_PH, (_m, i) => keep[+i]); });
     if (window.renderMathInElement) {
       renderMathInElement(el, { delimiters: [{ left: "$$", right: "$$", display: true }, { left: "$", right: "$", display: false }], throwOnError: false });
     }
+    eachText((n) => { if (n.nodeValue.includes("\uE002")) n.nodeValue = n.nodeValue.replace(/\uE002/g, "$"); });
     for (const [img, rel] of imgs) loadImage(img, rel);
     return el;
   }
@@ -180,7 +196,10 @@
         res = new Response(blob, { headers: { "Content-Type": blob.type || "image/png" } });
         await cache.put(rel, res.clone());
       }
-      if (res) img.src = URL.createObjectURL(await res.blob());
+      if (res) {
+        img.onload = () => URL.revokeObjectURL(img.src);
+        img.src = URL.createObjectURL(await res.blob());
+      }
     } catch (_e) { img.alt = "（图片加载失败）"; }
   }
   function tierTag(q) {
@@ -280,7 +299,7 @@
     if (!q) { Q.i += 1; if (Q.i >= Q.paths.length) location.hash = "#today"; else render(); return; }
     const selfJudge = !q.answer || !q.options.length;
     const s = L.stateOf(st.progress, path);
-    let picked = null, revealed = false;
+    let revealed = false;
     const stem = md(q.stem);
     for (const rel of q.images || []) { const img = h("img", { alt: "配图" }); stem.append(img); loadImage(img, rel); }
     const verdict = h("div", { class: "verdict" });
@@ -293,11 +312,10 @@
       verdict.className = "verdict " + (correct ? "right" : "wrong");
       verdict.textContent = correct ? "✓ 正确" : "✗ 错误" + (q.answer ? `，正确答案 ${q.answer}` : "");
       next.style.display = "";
-      answer(path, choice, correct);
+      answer(path, choice, correct).catch((e) => { st.error = "本机保存失败：" + (e.message || e); setSyncUi(); });
     };
     const onPick = (label) => {
       if (revealed) return;
-      picked = label;
       for (const [l, el] of optEls) {
         el.disabled = true;
         el.classList.toggle("right", l === q.answer);
@@ -322,7 +340,10 @@
       h("div", { class: "qstem" }, stem), opts, judge, judgeRow, verdict, exp,
       h("div", { class: "qnav" }, h("button", { class: "btn ghost", disabled: Q.i === 0 ? "" : null, onclick: () => { Q.i -= 1; render(); } }, "上一题"), next));
     let x0 = null;
-    card.addEventListener("touchstart", (e) => { x0 = e.touches[0].clientX; }, { passive: true });
+    card.addEventListener("touchstart", (e) => {
+      if (e.target.closest(".katex-display, table")) { x0 = null; return; }
+      x0 = e.touches[0].clientX;
+    }, { passive: true });
     card.addEventListener("touchend", (e) => {
       if (x0 == null) return;
       const dx = e.changedTouches[0].clientX - x0; x0 = null;
@@ -360,7 +381,7 @@
           h("button", { class: "btn small ghost", onclick: async () => { st.shas = {}; await S.set("shas", {}); await sync(); } }, "重新下载题目"),
           h("button", { class: "btn small ghost", onclick: async () => {
             if (st.pending.length && !confirm(`还有 ${st.pending.length} 条作答没上传，确定清除？`)) return;
-            await S.clear(); localStorage.removeItem(CFG_KEY); location.reload();
+            await S.clear(); await caches.delete("frm-images"); localStorage.removeItem(CFG_KEY); location.reload();
           } }, "清除本机数据"))),
       h("div", { class: "card muted" }, "frm-quiz v1 · 作答先存在手机，再上传到仓库 _sync/phone/，Obsidian 打开题库首页或学习计划页时合并。"));
   }
@@ -401,6 +422,7 @@
     await loadLocal();
     setSyncUi();
     render();
-    if (st.gh) sync({ quiet: !!st.data });
+    if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+    if (st.gh) sync({ quiet: true, pull: true });
   })();
 })();

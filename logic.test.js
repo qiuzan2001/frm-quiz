@@ -166,3 +166,10 @@ test("applyRecords tolerates null progress values and records without id", () =>
   assert.deepEqual(L.stateOf(s, P(1)), { status: "未做", attempts: 0, wrong_count: 0, last_done: null });
   assert.equal(P(2) in s, false);
 });
+
+test("applyRecords dedupes the same record id across remote and pending", () => {
+  const rec = { id: "dup1", q: P(1), choice: "A", correct: false, at: "2026-10-20T08:00:00+08:00" };
+  const s = L.applyRecords({}, [rec], [{ ...rec }]);
+  assert.equal(s[P(1)].attempts, 1);
+  assert.equal(s[P(1)].wrong_count, 1);
+});

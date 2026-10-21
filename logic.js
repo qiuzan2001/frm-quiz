@@ -45,9 +45,11 @@
       const v = raw || {};
       out[k] = { status: normalizeStatus(v.status), attempts: toCount(v.attempts), wrong_count: toCount(v.wrong_count), last_done: v.last_done || null };
     }
-    const recs = [].concat(...lists.map((l) => l || []))
+    let recs = [].concat(...lists.map((l) => l || []))
       .filter((r) => r && typeof r.id === "string" && typeof r.q === "string" && typeof r.at === "string")
       .sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    const seen = new Set();
+    recs = recs.filter((r) => !seen.has(r.id) && seen.add(r.id));
     for (const r of recs) out[r.q] = grade(out[r.q], r.correct === true, String(r.at).slice(0, 10));
     return out;
   }
