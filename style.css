@@ -14,15 +14,15 @@ body { padding-bottom: calc(64px + var(--sab)); }
 a { color: var(--accent); text-decoration: none; }
 button { font: inherit; color: inherit; }
 
-.top { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; padding: calc(10px + var(--sat)) 16px 10px; background: var(--card); border-bottom: 1px solid var(--line); }
+.top { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; padding: calc(10px + var(--sat)) max(16px, env(safe-area-inset-right)) 10px max(16px, env(safe-area-inset-left)); background: var(--card); border-bottom: 1px solid var(--line); }
 .top-title { font-weight: 700; font-size: 17px; }
 .top-sync { border: 1px solid var(--line); background: transparent; border-radius: 999px; padding: 4px 12px; font-size: 14px; color: var(--muted); }
 .top-sync.busy { opacity: .5; }
 .top-sync.pending { border-color: var(--warn); color: var(--warn); }
 .top-sync.offline { border-color: var(--bad); color: var(--bad); }
 
-main { padding: 14px 16px 24px; max-width: 720px; margin: 0 auto; }
-.tabs { position: fixed; left: 0; right: 0; bottom: 0; display: flex; background: var(--card); border-top: 1px solid var(--line); padding-bottom: var(--sab); }
+main { padding: 14px max(16px, env(safe-area-inset-right)) 24px max(16px, env(safe-area-inset-left)); max-width: 720px; margin: 0 auto; }
+.tabs { position: fixed; left: 0; right: 0; bottom: 0; display: flex; background: var(--card); border-top: 1px solid var(--line); padding-bottom: var(--sab); padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); z-index: 5; }
 .tabs a { flex: 1; text-align: center; padding: 12px 0 10px; color: var(--muted); font-size: 15px; }
 .tabs a.on { color: var(--accent); font-weight: 700; }
 
@@ -63,8 +63,7 @@ details > div { padding-left: 14px; }
 .qhead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 14px; color: var(--muted); }
 .qmeta { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
 .qstem { font-size: 17px; }
-.qstem img { max-width: 100%; border-radius: 8px; }
-.opt img, .qexp img { max-width: 100%; border-radius: 8px; }
+.qstem img, .opt img, .qexp img { max-width: 100%; border-radius: 8px; background: #fff; }
 .qstem table, .qexp table { border-collapse: collapse; font-size: 14px; }
 .qstem td, .qstem th, .qexp td, .qexp th { border: 1px solid var(--line); padding: 4px 8px; }
 .opt { display: block; width: 100%; text-align: left; margin: 8px 0; padding: 12px 14px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--card); font-size: 16px; }

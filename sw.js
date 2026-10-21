@@ -9,7 +9,7 @@ const SHELL = [
   "https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/contrib/auto-render.min.js",
 ];
 self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: "reload" })))).then(() => self.skipWaiting()));
 });
 self.addEventListener("activate", (e) => {
   e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE && k !== "frm-images").map((k) => caches.delete(k)))).then(() => self.clients.claim()));
@@ -19,10 +19,11 @@ self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET" || url.hostname === "api.github.com") return;
   const cacheable = url.origin === self.location.origin || url.hostname === "cdnjs.cloudflare.com";
   if (!cacheable) return;
-  e.respondWith(
-    caches.match(e.request).then((hit) => hit || fetch(e.request).then((res) => {
-      if (res.ok) caches.open(CACHE).then((c) => c.put(e.request, res.clone()));
-      return res;
-    }))
-  );
+  e.respondWith(caches.open(CACHE).then(async (c) => {
+    const hit = await c.match(e.request);
+    const net = fetch(e.request).then((res) => { if (res.ok) c.put(e.request, res.clone()); return res; });
+    if (url.hostname === "cdnjs.cloudflare.com") return hit || net;
+    e.waitUntil(net.catch(() => {}));
+    return hit || net;
+  }));
 });
