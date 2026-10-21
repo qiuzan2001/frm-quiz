@@ -66,8 +66,12 @@ details > div { padding-left: 14px; }
 .qstem img, .opt img, .qexp img { max-width: 100%; border-radius: 8px; background: #fff; }
 .qstem table, .qexp table { border-collapse: collapse; font-size: 14px; }
 .qstem td, .qstem th, .qexp td, .qexp th { border: 1px solid var(--line); padding: 4px 8px; }
-.opt { display: block; width: 100%; text-align: left; margin: 8px 0; padding: 12px 14px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--card); font-size: 16px; }
-.opt b { margin-right: 8px; }
+.opt { display: flex; gap: 8px; align-items: flex-start; width: 100%; text-align: left; margin: 8px 0; padding: 12px 14px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--card); font-size: 16px; }
+.opt b { flex: none; }
+.opt > div { flex: 1; min-width: 0; }
+.opt p { margin: 0; }
+.qstem p:first-child, .qexp p:first-child { margin-top: 0; }
+.qstem p:last-child, .qexp p:last-child { margin-bottom: 0; }
 .opt.picked { border-color: var(--accent); }
 .opt.right { border-color: var(--good); background: color-mix(in srgb, var(--good) 15%, transparent); }
 .opt.wrong { border-color: var(--bad); background: color-mix(in srgb, var(--bad) 13%, transparent); }
