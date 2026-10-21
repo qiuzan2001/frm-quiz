@@ -22,6 +22,7 @@ self.addEventListener("fetch", (e) => {
   e.respondWith(caches.open(CACHE).then(async (c) => {
     const hit = await c.match(e.request);
     const net = fetch(e.request).then((res) => { if (res.ok) c.put(e.request, res.clone()); return res; });
+    net.catch(() => {});
     if (url.hostname === "cdnjs.cloudflare.com") return hit || net;
     e.waitUntil(net.catch(() => {}));
     return hit || net;
