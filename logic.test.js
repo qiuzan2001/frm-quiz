@@ -154,3 +154,15 @@ test("wrongList sorts null last_done last", () => {
   };
   assert.deepEqual(L.wrongList(DATA, progress, true).map((q) => q.id), ["Q0003", "Q0002", "Q0001"]);
 });
+
+test("wrongList non-current includes status 错题 even with wrong_count 0", () => {
+  const progress = { [P(1)]: { status: "错题", attempts: 1, wrong_count: 0, last_done: "2026-10-01" } };
+  assert.deepEqual(L.wrongList(DATA, progress, true).map((q) => q.id), ["Q0001"]);
+  assert.deepEqual(L.wrongList(DATA, progress, false).map((q) => q.id), ["Q0001"]);
+});
+
+test("applyRecords tolerates null progress values and records without id", () => {
+  const s = L.applyRecords({ [P(1)]: null }, [{ q: P(2), choice: "A", correct: true, at: "2026-10-20T08:00:00+08:00" }]);
+  assert.deepEqual(L.stateOf(s, P(1)), { status: "未做", attempts: 0, wrong_count: 0, last_done: null });
+  assert.equal(P(2) in s, false);
+});

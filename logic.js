@@ -41,11 +41,12 @@
 
   function applyRecords(progress, ...lists) {
     const out = {};
-    for (const [k, v] of Object.entries(progress || {})) {
+    for (const [k, raw] of Object.entries(progress || {})) {
+      const v = raw || {};
       out[k] = { status: normalizeStatus(v.status), attempts: toCount(v.attempts), wrong_count: toCount(v.wrong_count), last_done: v.last_done || null };
     }
     const recs = [].concat(...lists.map((l) => l || []))
-      .filter((r) => r && typeof r.q === "string" && typeof r.at === "string")
+      .filter((r) => r && typeof r.id === "string" && typeof r.q === "string" && typeof r.at === "string")
       .sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
     for (const r of recs) out[r.q] = grade(out[r.q], r.correct === true, String(r.at).slice(0, 10));
     return out;
@@ -76,7 +77,7 @@
     return idx.get(q.path) || "extra";
   }
 
-  function byId(list) { return list.map((q) => q.path); }
+  function pathsOf(list) { return list.map((q) => q.path); }
 
   function unitTree(data, progress) {
     const qs = data.questions.filter((q) => !q.mock);
@@ -93,15 +94,15 @@
         const loIds = Array.from(new Set(rq.flatMap((q) => q.los.filter((lo) => lo.startsWith(loPrefix))))).sort();
         const los = loIds.map((lo) => {
           const lq = rq.filter((q) => q.los.includes(lo));
-          return { lo, paths: byId(lq), counts: counts(byId(lq), progress) };
+          return { lo, paths: pathsOf(lq), counts: counts(pathsOf(lq), progress) };
         });
-        return { id: rid, title: data.readings[rid].title, paths: byId(rq), counts: counts(byId(rq), progress), los };
+        return { id: rid, title: data.readings[rid].title, paths: pathsOf(rq), counts: counts(pathsOf(rq), progress), los };
       });
-      ph.units.push({ id: u.id, name: u.name, paths: byId(uq), counts: counts(byId(uq), progress), readings });
+      ph.units.push({ id: u.id, name: u.name, paths: pathsOf(uq), counts: counts(pathsOf(uq), progress), readings });
     }
     const none = qs.filter((q) => !q.unit || !data.units.some((u) => u.id === q.unit));
     if (none.length) {
-      phases.push({ id: "P0", name: "未分类", units: [{ id: "U00", name: "未分类", paths: byId(none), counts: counts(byId(none), progress), readings: [] }] });
+      phases.push({ id: "P0", name: "未分类", units: [{ id: "U00", name: "未分类", paths: pathsOf(none), counts: counts(pathsOf(none), progress), readings: [] }] });
     }
     return phases;
   }
@@ -116,18 +117,18 @@
     const qs = data.questions;
     const cat = qs.filter((q) => q.source === "分类题库");
     const catNames = Array.from(new Set(cat.map((q) => q.category || "其他"))).sort();
-    const catNode = node("分类题库", byId(cat), progress, catNames.map((c) => node(c, byId(cat.filter((q) => (q.category || "其他") === c)), progress)));
-    const rand = qs.filter((q) => q.source === "随机题库" || (q.source !== "分类题库" && q.source !== "模考" && q.kind === "bank"));
+    const catNode = node("分类题库", pathsOf(cat), progress, catNames.map((c) => node(c, pathsOf(cat.filter((q) => (q.category || "其他") === c)), progress)));
+    const rand = qs.filter((q) => q.source === "随机题库");
     const mock = qs.filter((q) => q.source === "模考");
     const tb = qs.filter((q) => q.kind === "textbook");
     const rids = Array.from(new Set(tb.map((q) => q.readings[0]))).sort();
-    const tbNode = node("教材习题", byId(tb), progress, rids.map((rid) => {
+    const tbNode = node("教材习题", pathsOf(tb), progress, rids.map((rid) => {
       const rq = tb.filter((q) => q.readings[0] === rid);
       const mods = Array.from(new Set(rq.map((q) => q.module))).sort((a, b) => Number(a) - Number(b));
       const title = data.readings[rid] ? `${rid} ${data.readings[rid].title}` : rid;
-      return node(title, byId(rq), progress, mods.map((m) => node(`Module ${m}`, byId(rq.filter((q) => q.module === m)), progress)));
+      return node(title, pathsOf(rq), progress, mods.map((m) => node(`Module ${m}`, pathsOf(rq.filter((q) => q.module === m)), progress)));
     }));
-    return [catNode, node("随机题库", byId(rand), progress), node("模考", byId(mock), progress), tbNode];
+    return [catNode, node("随机题库", pathsOf(rand), progress), node("模考", pathsOf(mock), progress), tbNode];
   }
 
   function dayOf(plan, date) { return ((plan && plan.days) || []).find((d) => d.date === date) || null; }
@@ -163,7 +164,7 @@
   function wrongList(data, progress, currentOnly) {
     return data.questions
       .map((q) => ({ q, s: stateOf(progress, q.path) }))
-      .filter(({ s }) => (currentOnly ? s.status === "错题" : s.wrong_count > 0))
+      .filter(({ s }) => (currentOnly ? s.status === "错题" : s.status === "错题" || s.wrong_count > 0))
       .sort((a, b) => b.s.wrong_count - a.s.wrong_count || (b.s.last_done || "").localeCompare(a.s.last_done || ""))
       .map(({ q }) => q);
   }
