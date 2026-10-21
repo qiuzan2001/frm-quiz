@@ -11,6 +11,7 @@
     return btoa(bin);
   }
   const enc = (path) => path.split("/").map(encodeURIComponent).join("/");
+  const MIME = { svg: "image/svg+xml", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp" };
 
   class GitHub {
     constructor({ token, repo, branch, name, email }) {
@@ -47,7 +48,11 @@
       }
     }
     async raw(path) { return (await this.req(path, { accept: "application/vnd.github.raw+json" })).text(); }
-    async blob(path) { return (await this.req(path, { accept: "application/vnd.github.raw+json" })).blob(); }
+    async blob(path) {
+      const b = await (await this.req(path, { accept: "application/vnd.github.raw+json" })).blob();
+      const t = MIME[(path.split(".").pop() || "").toLowerCase()];
+      return t ? new Blob([b], { type: t }) : b;
+    }
     // 只新建；已存在时 GitHub 返回 422
     async create(path, text, message) {
       const res = await this.req(path, {
