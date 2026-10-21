@@ -21,10 +21,10 @@ self.addEventListener("fetch", (e) => {
   if (!cacheable) return;
   e.respondWith(caches.open(CACHE).then(async (c) => {
     const hit = await c.match(e.request);
-    const net = fetch(e.request).then((res) => { if (res.ok) c.put(e.request, res.clone()); return res; });
-    net.catch(() => {});
-    if (url.hostname === "cdnjs.cloudflare.com") return hit || net;
-    e.waitUntil(net.catch(() => {}));
-    return hit || net;
+    const net = () => fetch(e.request).then(async (res) => { if (res.ok) await c.put(e.request, res.clone()); return res; });
+    if (url.hostname === "cdnjs.cloudflare.com") return hit || net();
+    if (!hit) return net();
+    e.waitUntil(net().catch(() => {}));
+    return hit;
   }));
 });
