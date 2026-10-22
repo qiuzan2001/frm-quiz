@@ -218,7 +218,7 @@
   function countText(c) { return `${c.done}/${c.total}${c.wrong ? " · 错 " + c.wrong : ""}`; }
   function startQueue(paths, title) {
     if (!paths.length) return;
-    st.queue = { paths, i: 0, title: title || "" };
+    st.queue = { paths, i: 0, title: title || "", done: {} };
     location.hash = "#quiz";
   }
   function actions(paths, title) {
@@ -308,13 +308,29 @@
     const verdict = h("div", { class: "verdict" });
     const exp = h("div", { class: "qexp", style: "display:none" }, q.answer ? h("div", null, h("b", null, `答案：${q.answer}`)) : null, md(q.analysis || "（无解析）"));
     const optEls = new Map();
-    const next = h("button", { class: "btn", style: "display:none", onclick: () => { Q.i += 1; if (Q.i >= Q.paths.length) { st.queue = null; location.hash = "#today"; } else render(); } }, Q.i + 1 >= Q.paths.length ? "完成" : "下一题");
-    const finish = (correct, choice) => {
+    const goNext = () => { Q.i += 1; if (Q.i >= Q.paths.length) { st.queue = null; location.hash = "#today"; } else render(); };
+    const goPrev = () => { if (Q.i > 0) { Q.i -= 1; render(); } };
+    const nav = () => h("div", { class: "qnav" },
+      h("button", { class: "btn ghost", disabled: Q.i === 0 ? "" : null, onclick: goPrev }, "上一题"),
+      h("button", { class: "btn ghost", onclick: goNext }, Q.i + 1 >= Q.paths.length ? "完成" : "下一题"));
+    const next = h("button", { class: "btn", style: "display:none", onclick: goNext }, Q.i + 1 >= Q.paths.length ? "完成" : "下一题");
+    const markOptions = (label) => {
+      for (const [l, el] of optEls) {
+        el.disabled = true;
+        el.classList.toggle("right", l === q.answer);
+        el.classList.toggle("wrong", l === label && l !== q.answer);
+      }
+    };
+    const showResult = (correct) => {
       revealed = true;
       exp.style.display = "";
       verdict.className = "verdict " + (correct ? "right" : "wrong");
       verdict.textContent = correct ? "✓ 正确" : "✗ 错误" + (q.answer ? `，正确答案 ${q.answer}` : "");
       next.style.display = "";
+    };
+    const finish = (correct, choice) => {
+      showResult(correct);
+      Q.done[path] = { choice, correct };
       answer(path, choice, correct).catch((e) => {
         st.error = "本机保存失败：" + (e.message || e);
         verdict.textContent += "（本机保存失败：" + (e.message || e) + "）";
@@ -323,11 +339,7 @@
     };
     const onPick = (label) => {
       if (revealed) return;
-      for (const [l, el] of optEls) {
-        el.disabled = true;
-        el.classList.toggle("right", l === q.answer);
-        el.classList.toggle("wrong", l === label && l !== q.answer);
-      }
+      markOptions(label);
       finish(label === q.answer, label);
     };
     const opts = q.options.map((o) => {
@@ -342,21 +354,18 @@
       h("button", { class: "btn ghost", onclick: (e) => { exp.style.display = ""; e.target.style.display = "none"; judgeRow.style.display = ""; } }, "看答案")) : null;
     const card = h("div", { class: "card" },
       h("div", { class: "qhead" }, h("span", null, `${Q.i + 1} / ${Q.paths.length}${Q.title ? " · " + Q.title : ""}`), h("a", { href: "#today", onclick: () => { st.queue = null; } }, "退出")),
+      nav(),
       h("div", { class: "qmeta" }, q.id, " · ", q.unit || "未分类", " · ", q.readings.join(" "), q.los.length ? " · LO " + q.los.join(", ") : "", " ", tierTag(q),
         s.attempts ? h("span", null, ` · 做过 ${s.attempts} 次`) : null),
       h("div", { class: "qstem" }, stem), opts, judge, judgeRow, verdict, exp,
-      h("div", { class: "qnav" }, h("button", { class: "btn ghost", disabled: Q.i === 0 ? "" : null, onclick: () => { Q.i -= 1; render(); } }, "上一题"), next));
-    let x0 = null;
-    card.addEventListener("touchstart", (e) => {
-      if (e.target.closest(".katex-display, table")) { x0 = null; return; }
-      x0 = e.touches[0].clientX;
-    }, { passive: true });
-    card.addEventListener("touchend", (e) => {
-      if (x0 == null) return;
-      const dx = e.changedTouches[0].clientX - x0; x0 = null;
-      if (dx < -70 && revealed) next.click();
-      else if (dx > 70 && Q.i > 0) { Q.i -= 1; render(); }
-    });
+      h("div", { class: "qnav" }, h("button", { class: "btn ghost", disabled: Q.i === 0 ? "" : null, onclick: goPrev }, "上一题"), next));
+    const prior = Q.done[path];
+    if (prior) {
+      if (selfJudge) { if (judge) judge.style.display = "none"; }
+      else markOptions(prior.choice);
+      showResult(prior.correct);
+      verdict.textContent += "（本轮已答）";
+    }
     show(card);
     window.scrollTo(0, 0);
   }

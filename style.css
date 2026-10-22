@@ -80,6 +80,8 @@ details > div { padding-left: 14px; }
 .verdict.right { color: var(--good); } .verdict.wrong { color: var(--bad); }
 .qexp { margin-top: 10px; padding: 12px 14px; border-radius: 12px; background: var(--bg); font-size: 15px; }
 .qnav { display: flex; justify-content: space-between; gap: 10px; margin-top: 14px; }
+.qhead + .qnav { margin: 0 0 10px; }
+.qhead + .qnav .btn { padding: 8px; font-size: 14px; }
 .qnav .btn { flex: 1; padding: 12px; }
 .judge { display: flex; gap: 10px; margin-top: 10px; }
 .judge .btn { flex: 1; }
