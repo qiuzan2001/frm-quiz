@@ -402,7 +402,7 @@
             if (st.pending.length && !confirm(`还有 ${st.pending.length} 条作答没上传，确定清除？`)) return;
             await S.clear(); await caches.delete("frm-images"); localStorage.removeItem(CFG_KEY); location.reload();
           } }, "清除本机数据"))),
-      h("div", { class: "card muted" }, "frm-quiz v1 · 作答先存在手机，再上传到仓库 _sync/phone/，GitHub Actions 自动合并进题目并更新进度。"));
+      h("div", { class: "card muted" }, "frm-quiz v2 · 作答先存在手机，再上传到仓库 _sync/phone/，GitHub Actions 自动合并进题目并更新进度。"));
   }
 
   function render() {
@@ -434,7 +434,18 @@
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && st.pending.length) { clearTimeout(uploadTimer); sync({ quiet: true }); } });
   window.addEventListener("pagehide", () => { if (st.pending.length) { clearTimeout(uploadTimer); sync({ quiet: true }); } });
   syncBtn.addEventListener("click", () => sync());
-  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+  if ("serviceWorker" in navigator) {
+    const hadController = !!navigator.serviceWorker.controller;
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (!hadController || reloaded || location.hash === "#quiz") return;
+      reloaded = true;
+      location.reload();
+    });
+    navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then((reg) => {
+      document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") reg.update().catch(() => {}); });
+    }).catch(() => {});
+  }
 
   (async () => {
     saveCfg(loadCfg());

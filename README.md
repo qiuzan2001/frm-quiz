@@ -18,4 +18,4 @@ FRM-Vault 题库的 iPhone 刷题页面。纯静态，题目与进度都从私�
 
 ## 开发
 
-`node --test logic.test.js`；本地预览 `python3 -m http.server 8765`。同源文件按「先用缓存、后台更新」加载，改动会在下一次打开时生效；换 CDN 库版本时把 `sw.js` 里的 `CACHE` 版本号 +1。
+`node --test logic.test.js`；本地预览 `python3 -m http.server 8765`。同源文件网络优先（3 秒超时或离线时用缓存），推送后下次打开即生效；换 CDN 库版本时把 `sw.js` 里的 `CACHE` 版本号 +1。
